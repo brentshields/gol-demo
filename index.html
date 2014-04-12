@@ -2,12 +2,43 @@
 <html>
     <head>
         <script src="gol/demo.js"></script>
+        <script type="text/javascript">
+            document.addEventListener(
+                "keydown",
+                function(e) {
+                    if (e.keyCode === 37) {gol.demo.step_back();}
+                    else if (e.keyCode === 39) {gol.demo.step();}
+                });
+        </script>
+
     </head>
     <body>
         <svg height=200 width=200>
-            <circle id="[0 0]"
-                    cx=25 cy=25 r=10 fill="red"
-                    onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
+            <rect id="[0 0]"
+                  width=25 height=25
+                  stroke=black fill=none stroke-width=2px
+                  pointer-events=fill
+                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
+            <rect id="[1 0]"
+                  x = 25
+                  width=25 height=25
+                  stroke=black fill=none stroke-width=2px
+                  pointer-events=fill
+                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
+
+            <rect id="[0 1]"
+                  y = 25
+                  width=25 height=25
+                  stroke=black fill=none stroke-width=2px
+                  pointer-events=fill
+                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
+
+            <rect id="[1 1]"
+                  x = 25 y = 25
+                  width=25 height=25
+                  stroke=black fill=none stroke-width=2px
+                  pointer-events=fill
+                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
         </svg>
     </body>
 </html>

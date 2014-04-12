@@ -2,16 +2,41 @@
   (:require [rxatom.core :as rx]
             [cljs.reader :as reader]))
 
-(def grid (rx/rxatom {[0 0] true
-                      [1 0] false
-                      [0 1] false
-                      [1 1] true}))
+(def grid-x 2)
+(def grid-y 2)
+(def cell-size 25)
+(defn cell-color [set?] (if set? "black" "none"))
 
-(def grid-observer(rx/observe grid #(js/alert (str "Grid updated:" %))))
+(def grid-indices (for [y (range grid-y) x (range grid-x)]
+                    [x y]))
+
+(def grid (rx/rxatom (zipmap grid-indices (repeat false))))
+
+(def cells
+  (zipmap grid-indices (map #(rx/rxlens-key grid %) grid-indices)))
+
+
+(def history (atom '()))
+
+(defn step-back []
+  (when-not (empty? @history)
+    (reset! grid (first @history))
+    (swap! history next)
+    (rx/commit-frame! grid)))
+
 
 (defn flip-cell [coord-string]
-  (js/alert (str "calling with" coord-string))
-  (let [cell (rx/rxlens-key grid (reader/read-string coord-string))]
-    (swap! cell not)))
+  (let [idx (reader/read-string coord-string)]
+    (swap! (cells idx) not)))
 
-(defn step [] (rx/commit-frame! grid))
+(defn step []
+  (swap! history conj @grid)
+  (rx/commit-frame! grid))
+
+(defn observe-cell [idx]
+  (rx/observe (cells idx)
+              #(-> js/document
+                   (.getElementById (pr-str idx))
+                   (.setAttribute "fill" (cell-color %)))))
+
+(def observers (doall (map observe-cell grid-indices)))
