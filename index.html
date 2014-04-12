@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="gol/demo.js"></script>
+    </head>
+    <body>
+        <svg height=200 width=200>
+            <circle id="[0 0]"
+                    cx=25 cy=25 r=10 fill="red"
+                    onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
+        </svg>
+    </body>
+</html>
