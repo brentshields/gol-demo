@@ -2,13 +2,34 @@
   (:require [rxatom.core :as rx]
             [cljs.reader :as reader]))
 
-(def grid-x 2)
-(def grid-y 2)
-(def cell-size 25)
+(def grid-x 100)
+(def grid-y 100)
+(def cell-size 10)
 (defn cell-color [set?] (if set? "black" "none"))
 
 (def grid-indices (for [y (range grid-y) x (range grid-x)]
                     [x y]))
+
+
+(defn cell-svg [[x y :as idx]]
+  (str "<rect id="
+       "\"" (pr-str idx) "\""
+       " x=" (* cell-size x)
+       " y=" (* cell-size y)
+       " width=" cell-size
+       " height=" cell-size
+       " stroke=black fill=none stroke-width=2px pointer-events=fill"
+       " onclick='gol.demo.flip_cell(this.id); gol.demo.step()'/>"))
+
+(defn grid-height []
+  (* grid-y cell-size))
+
+(defn grid-width []
+  (* grid-x cell-size))
+
+(defn grid-svg []
+  (apply str (map cell-svg grid-indices)))
+
 
 (def grid (rx/rxatom (zipmap grid-indices (repeat false))))
 

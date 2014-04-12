@@ -10,35 +10,18 @@
                     else if (e.keyCode === 39) {gol.demo.step();}
                 });
         </script>
+        <script type="text/javascript">
+            window.onload = function () {
+                var grid = document.getElementById("grid");
+                grid.setAttribute("height", gol.demo.grid_height());
+                grid.setAttribute("width", gol.demo.grid_width());
+                document.getElementById("grid").innerHTML =
+                    gol.demo.grid_svg();
+            };
+            </script>
 
     </head>
     <body>
-        <svg height=200 width=200>
-            <rect id="[0 0]"
-                  width=25 height=25
-                  stroke=black fill=none stroke-width=2px
-                  pointer-events=fill
-                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
-            <rect id="[1 0]"
-                  x = 25
-                  width=25 height=25
-                  stroke=black fill=none stroke-width=2px
-                  pointer-events=fill
-                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
-
-            <rect id="[0 1]"
-                  y = 25
-                  width=25 height=25
-                  stroke=black fill=none stroke-width=2px
-                  pointer-events=fill
-                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
-
-            <rect id="[1 1]"
-                  x = 25 y = 25
-                  width=25 height=25
-                  stroke=black fill=none stroke-width=2px
-                  pointer-events=fill
-                  onclick="gol.demo.flip_cell(this.id); gol.demo.step()"/>
-        </svg>
+        <svg id="grid"></svg>
     </body>
 </html>
