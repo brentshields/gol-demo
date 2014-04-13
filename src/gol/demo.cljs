@@ -2,14 +2,16 @@
   (:require [rxatom.core :as rx]
             [cljs.reader :as reader]))
 
-;; Constants
+;; Geometry
 
 (def ^:export grid-x 50)
 (def ^:export grid-y 50)
 (def ^:export cell-size 15)
 
-(def grid-indices (for [y (range grid-y) x (range grid-x)]
-                    [x y]))
+(def cell-indices (range (* grid-x grid-y)))
+
+(defn cell-coord [idx]
+  [(mod idx grid-x) (quot idx grid-x)])
 
 
 ;; Rendering
@@ -18,28 +20,29 @@
 
 (defn render-callback [idx]
   #(-> js/document
-       (.getElementById (pr-str idx))
+       (.getElementById (str idx))
        (.setAttribute "fill" (cell-color %))))
 
-(defn cell-svg [[x y :as idx]]
-  (str "<rect id="
-       "\"" (pr-str idx) "\""
-       " x=" (* cell-size x)
-       " y=" (* cell-size y)
-       " width=" cell-size
-       " height=" cell-size
-       " fill=none pointer-events=fill"
-       " onclick='gol.demo.flip_cell(this.id);'/>"))
+(defn cell-svg [idx]
+  (let [[x y] (cell-coord idx)]
+    (str "<rect id="
+         "\"" (str idx) "\""
+         " x=" (* cell-size x)
+         " y=" (* cell-size y)
+         " width=" cell-size
+         " height=" cell-size
+         " fill=none pointer-events=fill"
+         " onclick='gol.demo.flip_cell(this.id);'/>")))
 
 (defn ^:export grid-svg []
-  (apply str (map cell-svg grid-indices)))
+  (apply str (map cell-svg cell-indices)))
 
 
 ;; Application State
 
-(def grid (rx/rxatom (zipmap grid-indices (repeat false))))
+(def grid (rx/rxatom (zipmap cell-indices (repeat false))))
 
-(def cells (zipmap grid-indices (map #(rx/rxlens-key grid %) grid-indices)))
+(def cells (zipmap cell-indices (map #(rx/rxlens-key grid %) cell-indices)))
 
 (def gen-counter (rx/rxatom 0))
 
@@ -48,12 +51,13 @@
 
 ;; Game of Life Simulation
 
-(defn neighbors [[x y]]
-  (for [dx [-1 0 1]
-        dy [-1 0 1]
-        :let [neighbor [(mod (+ x dx) grid-x) (mod (+ y dy) grid-y)]]
-        :when (not= neighbor [x y])]
-    neighbor))
+(defn neighbors [idx]
+  (let [[x y] (cell-coord idx)]
+    (for [dx [-1 0 1]
+          dy [-1 0 1]
+          :let [[nx ny] [(mod (+ x dx) grid-x) (mod (+ y dy) grid-y)]]
+          :when (not= [nx ny] [x y])]
+      (+ nx (* grid-x ny)))))
 
 (defn flip-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
   (let [living-neighbors (count (filter identity [n0 n1 n2 n3 n4 n5 n6 n7]))]
@@ -79,8 +83,8 @@
   (swap! history conj @grid)
   (rx/commit-frame! grid))
 
-(defn ^:export flip-cell [coord-string]
-  (let [idx (reader/read-string coord-string)]
+(defn ^:export flip-cell [idx-string]
+  (let [idx (reader/read-string idx-string)]
     (swap! (cells idx) not)
     (update-grid)))
 
@@ -93,11 +97,11 @@
 ;; Observers
 
 (def cell-renderers
-  (doall (map #(rx/observe (cells %) (render-callback %)) grid-indices)))
+  (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
 
 (defn gen-updater [idx]
   (let [flip? (rx/observe (flip-next-gen idx))]
     (rx/observe gen-counter #(when @flip?
                                (swap! (cells idx) not)))))
 
-(def next-gen-updaters (doall (map gen-updater grid-indices)))
+(def next-gen-updaters (doall (map gen-updater cell-indices)))
