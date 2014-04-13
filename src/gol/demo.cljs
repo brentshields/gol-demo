@@ -10,9 +10,7 @@
 
 (def cell-indices (range (* grid-x grid-y)))
 
-(defn cell-coord [idx]
-  [(mod idx grid-x) (quot idx grid-x)])
-
+(defn cell-coord [idx] [(mod idx grid-x) (quot idx grid-x)])
 
 ;; Rendering
 
@@ -37,7 +35,6 @@
 (defn ^:export grid-svg []
   (apply str (map cell-svg cell-indices)))
 
-
 ;; Application State
 
 (def grid (rx/rxatom (zipmap cell-indices (repeat false))))
@@ -46,8 +43,7 @@
 
 (def gen-counter (rx/rxatom 0))
 
-(def history (atom '()))
-
+(def history (atom []))
 
 ;; Game of Life Simulation
 
@@ -70,13 +66,12 @@
         (->> idx neighbors (cons idx) (map cells) vec)]
     (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 flip-next-gen?)))
 
-
 ;; Actions
 
 (defn ^:export step-back []
   (when-not (empty? @history)
-    (reset! grid (first @history))
-    (swap! history next)
+    (reset! grid (peek @history))
+    (swap! history pop)
     (rx/commit-frame! grid)))
 
 (defn- update-grid []
@@ -92,7 +87,6 @@
   (swap! gen-counter inc)
   (rx/commit-frame! gen-counter)
   (update-grid))
-
 
 ;; Observers
 
