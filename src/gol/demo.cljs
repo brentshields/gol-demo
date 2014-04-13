@@ -2,11 +2,11 @@
   (:require [rxatom.core :as rx]
             [cljs.reader :as reader]))
 
-(def ^:export grid-x 30)
-(def ^:export grid-y 30)
-(def ^:export cell-size 20)
+(def ^:export grid-x 50)
+(def ^:export grid-y 50)
+(def ^:export cell-size 15)
 
-(defn cell-color [set?] (if set? "black" "none"))
+(defn cell-color [set?] (if set? "blue" "none"))
 
 (def grid-indices (for [y (range grid-y) x (range grid-x)]
                     [x y]))
@@ -18,7 +18,7 @@
        " y=" (* cell-size y)
        " width=" cell-size
        " height=" cell-size
-       " stroke=black fill=none stroke-width=2px pointer-events=fill"
+       " fill=none pointer-events=fill"
        " onclick='gol.demo.flip_cell(this.id);'/>"))
 
 (defn ^:export grid-svg []
@@ -78,8 +78,6 @@
   (swap! gen-counter inc)
   (rx/commit-frame! gen-counter)
   (update-grid))
-
-(rx/observe gen-counter #(.log js/console (str "Gen Incremented: " %)))
 
 (defn gen-updater [idx]
   (let [cell (cells idx)
