@@ -6,7 +6,7 @@
 (def ^:export grid-y 50)
 (def ^:export cell-size 15)
 
-(defn cell-color [set?] (if set? "blue" "none"))
+(defn cell-color [alive?] (if alive? "blue" "none"))
 
 (def grid-indices (for [y (range grid-y) x (range grid-x)]
                     [x y]))
@@ -21,6 +21,11 @@
        " fill=none pointer-events=fill"
        " onclick='gol.demo.flip_cell(this.id);'/>"))
 
+(defn render-callback [idx]
+  #(-> js/document
+       (.getElementById (pr-str idx))
+       (.setAttribute "fill" (cell-color %))))
+
 (defn ^:export grid-svg []
   (apply str (map cell-svg grid-indices)))
 
@@ -29,13 +34,8 @@
 
 (def cells (zipmap grid-indices (map #(rx/rxlens-key grid %) grid-indices)))
 
-(defn observe-cell-display [idx]
-  (rx/observe (cells idx)
-              #(-> js/document
-                   (.getElementById (pr-str idx))
-                   (.setAttribute "fill" (cell-color %)))))
-
-(def cell-renderers (doall (map observe-cell-display grid-indices)))
+(def cell-renderers
+  (doall (map #(rx/observe (cells %) (render-callback %)) grid-indices)))
 
 (def gen-counter (rx/rxatom 0))
 
@@ -46,16 +46,16 @@
         :when (not= neighbor [x y])]
     neighbor))
 
-(defn alive-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
-  (let [alive-neighbors (count (filter identity [n0 n1 n2 n3 n4 n5 n6 n7]))]
+(defn flip-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
+  (let [living-neighbors (count (filter identity [n0 n1 n2 n3 n4 n5 n6 n7]))]
     (if cell-alive?
-      (#{2 3} alive-neighbors)
-      (= 3 alive-neighbors))))
+      (not (#{2 3} living-neighbors))
+      (= 3 living-neighbors))))
 
-(defn next-gen-cell [idx]
+(defn flip-next-gen [idx]
   (let [[c n0 n1 n2 n3 n4 n5 n6 n7]
         (->> idx neighbors (cons idx) (map cells) vec)]
-    (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 alive-next-gen?)))
+    (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 flip-next-gen?)))
 
 (def history (atom '()))
 
@@ -76,17 +76,12 @@
 
 (defn ^:export next-gen []
   (swap! gen-counter inc)
-  (rx/commit-frame! gen-counter)
+  (rx/commit-frame! grid gen-counter)
   (update-grid))
 
 (defn gen-updater [idx]
-  (let [cell (cells idx)
-        last-gen (atom 0)]
-    (rx/observe (rx/rxfn cell (next-gen-cell idx) gen-counter vector)
-                (fn [[cur next-gen gen-count]]
-                   (when (and (> gen-count @last-gen)
-                              (not= cur next-gen))
-                     (reset! cell next-gen))
-                   (reset! last-gen gen-count)))))
+  (let [flip? (rx/observe (flip-next-gen idx))]
+    (rx/observe gen-counter #(when @flip?
+                               (swap! (cells idx) not)))))
 
 (def next-gen-updaters (doall (map gen-updater grid-indices)))
