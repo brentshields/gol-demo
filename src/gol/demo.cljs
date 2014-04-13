@@ -41,7 +41,7 @@
 
 (def cells (zipmap cell-indices (map #(rx/rxlens-key grid %) cell-indices)))
 
-(def gen-counter (rx/rxatom 0))
+(def deltas (atom {}))
 
 (def history (atom []))
 
@@ -55,24 +55,18 @@
           :when (not= [nx ny] [x y])]
       (+ nx (* grid-x ny)))))
 
-(defn flip-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
+(defn alive-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
   (let [living-neighbors (count (filter identity [n0 n1 n2 n3 n4 n5 n6 n7]))]
     (if cell-alive?
-      (not (#{2 3} living-neighbors))
+      (#{2 3} living-neighbors)
       (= 3 living-neighbors))))
 
-(defn flip-next-gen [idx]
+(defn next-gen-cell [idx]
   (let [[c n0 n1 n2 n3 n4 n5 n6 n7]
         (->> idx neighbors (cons idx) (map cells) vec)]
-    (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 flip-next-gen?)))
+    (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 alive-next-gen?)))
 
 ;; Actions
-
-(defn ^:export step-back []
-  (when-not (empty? @history)
-    (reset! grid (peek @history))
-    (swap! history pop)
-    (rx/commit-frame! grid)))
 
 (defn- update-grid []
   (swap! history conj @grid)
@@ -83,9 +77,15 @@
     (swap! (cells idx) not)
     (update-grid)))
 
-(defn ^:export next-gen []
-  (swap! gen-counter inc)
-  (rx/commit-frame! gen-counter)
+(defn ^:export step-back []
+  (when-not (empty? @history)
+    (reset! grid (peek @history))
+    (swap! history pop)
+    (rx/commit-frame! grid)))
+
+(defn ^:export step-forward []
+  (swap! grid conj @deltas)
+  (swap! deltas empty)
   (update-grid))
 
 ;; Observers
@@ -93,9 +93,6 @@
 (def cell-renderers
   (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
 
-(defn gen-updater [idx]
-  (let [flip? (rx/observe (flip-next-gen idx))]
-    (rx/observe gen-counter #(when @flip?
-                               (swap! (cells idx) not)))))
-
-(def next-gen-updaters (doall (map gen-updater cell-indices)))
+(def delta-generators
+  (let [callback #(fn [alive?] (swap! deltas assoc % alive?))]
+    (doall (map #(rx/observe (next-gen-cell %) (callback %)) cell-indices))))
