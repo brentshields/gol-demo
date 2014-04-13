@@ -7,14 +7,15 @@
                 "keydown",
                 function(e) {
                     if (e.keyCode === 37) {gol.demo.step_back();}
-                    else if (e.keyCode === 39) {gol.demo.step();}
+                    else if (e.keyCode === 39) {gol.demo.next_gen();}
                 });
         </script>
         <script type="text/javascript">
             window.onload = function () {
                 var grid = document.getElementById("grid");
-                grid.setAttribute("height", gol.demo.grid_height());
-                grid.setAttribute("width", gol.demo.grid_width());
+                var size = gol.demo.cell_size;
+                grid.setAttribute("height", gol.demo.grid_y * size);
+                grid.setAttribute("width", gol.demo.grid_x * size);
                 document.getElementById("grid").innerHTML =
                     gol.demo.grid_svg();
             };
