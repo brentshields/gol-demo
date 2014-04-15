@@ -8,9 +8,17 @@
                 function(e) {
                     if (e.keyCode === 37) {gol.demo.step_back();}
                     else if (e.keyCode === 39) {gol.demo.step_forward();}
+	            else if (e.keyCode === 71) {
+	                var animator = function () {
+	                    gol.demo.step_forward();
+	                    animRequest = requestAnimationFrame(animator);
+	                };
+	                animRequest = requestAnimationFrame(animator);
+	            }
+	            else if (e.keyCode === 83) {
+	                cancelAnimationFrame(animRequest);
+	            }
                 });
-        </script>
-        <script type="text/javascript">
             window.onload = function () {
                 var grid = document.getElementById("grid");
                 var size = gol.demo.cell_size;
@@ -19,8 +27,7 @@
                 document.getElementById("grid").innerHTML =
                     gol.demo.grid_svg();
             };
-            </script>
-
+        </script>
     </head>
     <body>
         <svg id="grid"></svg>

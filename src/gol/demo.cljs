@@ -5,9 +5,9 @@
 
 ;; Geometry
 
-(def ^:export grid-x 50)
-(def ^:export grid-y 50)
-(def ^:export cell-size 15)
+(def ^:export grid-x 70)
+(def ^:export grid-y 70)
+(def ^:export cell-size 10)
 
 (def cell-indices (range (* grid-x grid-y)))
 
