@@ -1,6 +1,7 @@
 (ns gol.demo
   (:require [rxatom.core :as rx]
-            [cljs.reader :as reader]))
+            [cljs.core.match])
+  (:require-macros [cljs.core.match.macros :refer [match]]))
 
 ;; Geometry
 
@@ -14,7 +15,7 @@
 
 ;; Rendering
 
-(defn cell-color [alive?] (if alive? "blue" "none"))
+(def cell-color {:alive "blue" :dead "none"})
 
 (defn render-callback [idx]
   #(-> js/document
@@ -30,22 +31,27 @@
          " width=" cell-size
          " height=" cell-size
          " fill=none pointer-events=fill"
-         " onclick='gol.demo.flip_cell(this.id);'/>")))
+         " onclick='gol.demo.flip_cell(parseInt(this.id));'/>")))
 
 (defn ^:export grid-svg []
   (apply str (map cell-svg cell-indices)))
 
 ;; Application State
 
-(def grid (rx/rxatom (zipmap cell-indices (repeat false))))
+(def grid
+  (rx/rxatom (conj (zipmap cell-indices (repeat :dead)) {:generation 0})))
 
 (def cells (zipmap cell-indices (map #(rx/rxlens-key grid %) cell-indices)))
+
+(def generation (rx/rxlens-key grid :generation))
 
 (def deltas (atom {}))
 
 (def history (atom []))
 
 ;; Game of Life Simulation
+
+(def flip {:alive :dead :dead :alive})
 
 (defn neighbors [idx]
   (let [[x y] (cell-coord idx)]
@@ -55,27 +61,29 @@
           :when (not= [nx ny] [x y])]
       (+ nx (* grid-x ny)))))
 
-(defn alive-next-gen? [cell-alive? n0 n1 n2 n3 n4 n5 n6 n7]
-  (let [living-neighbors (count (filter identity [n0 n1 n2 n3 n4 n5 n6 n7]))]
-    (if cell-alive?
-      (#{2 3} living-neighbors)
-      (= 3 living-neighbors))))
+(defn next-gen-val [center n0 n1 n2 n3 n4 n5 n6 n7]
+  (let [living-neighbors (count (filter #{:alive} [n0 n1 n2 n3 n4 n5 n6 n7]))]
+    (match [center living-neighbors]
+      [:alive 2] :alive
+      [:alive 3] :alive
+      [:dead  3] :alive
+      :else :dead)))
 
-(defn next-gen-cell [idx]
-  (let [[c n0 n1 n2 n3 n4 n5 n6 n7]
-        (->> idx neighbors (cons idx) (map cells) vec)]
-    (rx/rxfn c n0 n1 n2 n3 n4 n5 n6 n7 alive-next-gen?)))
+(defn cell-transition [idx]
+  (let [neighbor-cells (vec (map cells (neighbors idx)))
+        make-pair (fn [c n0 n1 n2 n3 n4 n5 n6 n7]
+                    [c (next-gen-val c n0 n1 n2 n3 n4 n5 n6 n7)])]
+    (apply rx/rxfn (cells idx) (conj neighbor-cells make-pair))))
 
 ;; Actions
 
-(defn- update-grid []
+(defn- push-history-and-update []
   (swap! history conj @grid)
   (rx/commit-frame! grid))
 
-(defn ^:export flip-cell [idx-string]
-  (let [idx (reader/read-string idx-string)]
-    (swap! (cells idx) not)
-    (update-grid)))
+(defn ^:export flip-cell [idx]
+  (swap! (cells idx) flip)
+  (push-history-and-update))
 
 (defn ^:export step-back []
   (when-not (empty? @history)
@@ -84,9 +92,8 @@
     (rx/commit-frame! grid)))
 
 (defn ^:export step-forward []
-  (swap! grid conj @deltas)
-  (swap! deltas empty)
-  (update-grid))
+  (swap! generation inc)
+  (rx/commit-frame! grid))
 
 ;; Observers
 
@@ -94,5 +101,18 @@
   (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
 
 (def delta-generators
-  (let [callback #(fn [alive?] (swap! deltas assoc % alive?))]
-    (doall (map #(rx/observe (next-gen-cell %) (callback %)) cell-indices))))
+  (let [callback #(fn [[cur next]]
+                    (if (= cur next)
+                      (swap! deltas dissoc %)
+                      (swap! deltas assoc % next)))]
+    (doall (map #(rx/observe (cell-transition %) (callback %)) cell-indices))))
+
+(def generation-transition
+  (let [last-gen (atom 0)
+        apply-deltas (fn [gen]
+                       (when (> gen @last-gen)
+                         (swap! grid conj @deltas)
+                         (swap! deltas empty)
+                         (push-history-and-update))
+                       (reset! last-gen gen))]
+    (rx/observe generation apply-deltas)))

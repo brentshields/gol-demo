@@ -6,7 +6,7 @@
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2173"]
-                 [org.clojars.brentshields/rxatom "0.1.0-SNAPSHOT"]]
+                 [org.clojure/core.match "0.2.1"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]]
 
