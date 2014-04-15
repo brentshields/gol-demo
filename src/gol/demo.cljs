@@ -13,37 +13,11 @@
 
 (defn cell-coord [idx] [(mod idx grid-x) (quot idx grid-x)])
 
-;; Rendering
-
-(def cell-color {:alive "blue" :dead "none"})
-
-(defn render-callback [idx]
-  #(-> js/document
-       (.getElementById (str idx))
-       (.setAttribute "fill" (cell-color %))))
-
-(defn cell-svg [idx]
-  (let [[x y] (cell-coord idx)]
-    (str "<rect id="
-         "\"" (str idx) "\""
-         " x=" (* cell-size x)
-         " y=" (* cell-size y)
-         " width=" cell-size
-         " height=" cell-size
-         " fill=none pointer-events=fill"
-         " onclick='gol.demo.flip_cell(parseInt(this.id));'/>")))
-
-(defn ^:export grid-svg []
-  (apply str (map cell-svg cell-indices)))
-
 ;; Application State
 
-(def grid
-  (rx/rxatom (conj (zipmap cell-indices (repeat :dead)) {:generation 0})))
+(def grid (rx/rxatom (zipmap cell-indices (repeat :dead))))
 
 (def cells (zipmap cell-indices (map #(rx/rxlens-key grid %) cell-indices)))
-
-(def generation (rx/rxlens-key grid :generation))
 
 (def deltas (atom {}))
 
@@ -92,13 +66,9 @@
     (rx/commit-frame! grid)))
 
 (defn ^:export step-forward []
-  (swap! generation inc)
-  (rx/commit-frame! grid))
-
-;; Observers
-
-(def cell-renderers
-  (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
+  (swap! grid conj @deltas)
+  (swap! deltas empty)
+  (push-history-and-update))
 
 (def delta-generators
   (let [callback #(fn [[cur next]]
@@ -107,12 +77,27 @@
                       (swap! deltas assoc % next)))]
     (doall (map #(rx/observe (cell-transition %) (callback %)) cell-indices))))
 
-(def generation-transition
-  (let [last-gen (atom 0)
-        apply-deltas (fn [gen]
-                       (when (> gen @last-gen)
-                         (swap! grid conj @deltas)
-                         (swap! deltas empty)
-                         (push-history-and-update))
-                       (reset! last-gen gen))]
-    (rx/observe generation apply-deltas)))
+;; Rendering
+
+(def cell-color {:alive "blue" :dead "none"})
+
+(defn render-callback [idx]
+  #(-> js/document
+       (.getElementById (str idx))
+       (.setAttribute "fill" (cell-color %))))
+
+(defn cell-svg [idx]
+  (let [[x y] (cell-coord idx)]
+    (str "<rect id="
+         "\"" (str idx) "\""
+         " x=" (* cell-size x)
+         " y=" (* cell-size y)
+         " width=" cell-size
+         " height=" cell-size
+         " fill=none pointer-events=fill"
+         " onclick='gol.demo.flip_cell(parseInt(this.id));'/>")))
+
+(defn ^:export grid-svg [] (apply str (map cell-svg cell-indices)))
+
+(def cell-renderers
+  (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
