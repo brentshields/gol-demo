@@ -6,19 +6,28 @@
             document.addEventListener(
                 "keydown",
                 function(e) {
-                    if (e.keyCode === 37) {gol.demo.step_back();}
-                    else if (e.keyCode === 39) {gol.demo.step_forward();}
-	            else if (e.keyCode === 71) {
+	            var animate = function (animFunc) {
 	                var animator = function () {
-	                    gol.demo.step_forward();
+	                    animFunc();
 	                    animRequest = requestAnimationFrame(animator);
 	                };
+                        cancelAnimation();
 	                animRequest = requestAnimationFrame(animator);
-	            }
-	            else if (e.keyCode === 83) {
-	                cancelAnimationFrame(animRequest);
-	            }
+	            };
+
+                    var cancelAnimation = function () {
+	                if (typeof(animRequest) !== 'undefined') {
+	                    cancelAnimationFrame(animRequest);
+	                }
+                    };
+
+                    if (e.keyCode === 37) {gol.demo.step_back()}
+                    else if (e.keyCode === 39) {gol.demo.step_forward()}
+	            else if (e.keyCode === 71) {animate(gol.demo.step_forward)}
+	            else if (e.keyCode === 82) {animate(gol.demo.step_back)}
+	            else if (e.keyCode === 83) {cancelAnimation()}
                 });
+
             window.onload = function () {
 	        var container = document.getElementById("container");
                 var grid = document.getElementById("grid");
