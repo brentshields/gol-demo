@@ -1,6 +1,5 @@
 (ns gol.demo
-  (:require [rxatom.core :as rx]
-            [cljs.core.match])
+  (:require [funken.core :as fnk] [cljs.core.match])
   (:require-macros [cljs.core.match.macros :refer [match]]))
 
 ;; Geometry
@@ -15,9 +14,9 @@
 
 ;; Application State
 
-(def grid (rx/rxatom (zipmap cell-indices (repeat :dead))))
+(def grid (fnk/state (zipmap cell-indices (repeat :dead))))
 
-(def cells (zipmap cell-indices (map #(rx/rxlens-key grid %) cell-indices)))
+(def cells (zipmap cell-indices (map #(fnk/lens-key grid %) cell-indices)))
 
 (def deltas (atom {}))
 
@@ -47,13 +46,13 @@
   (let [neighbor-cells (vec (map cells (neighbors idx)))
         make-pair (fn [c n0 n1 n2 n3 n4 n5 n6 n7]
                     [c (next-gen-val c n0 n1 n2 n3 n4 n5 n6 n7)])]
-    (apply rx/rxfn (cells idx) (conj neighbor-cells make-pair))))
+    (apply fnk/view (cells idx) (conj neighbor-cells make-pair))))
 
 ;; Actions
 
 (defn- push-history-and-update []
   (swap! history conj @grid)
-  (rx/commit-frame! grid))
+  (fnk/commit! grid))
 
 (defn ^:export flip-cell [idx]
   (swap! (cells idx) flip)
@@ -63,7 +62,7 @@
   (when-not (empty? @history)
     (reset! grid (peek @history))
     (swap! history pop)
-    (rx/commit-frame! grid)))
+    (fnk/commit! grid)))
 
 (defn ^:export step-forward []
   (swap! grid conj @deltas)
@@ -75,11 +74,11 @@
                     (if (= cur next)
                       (swap! deltas dissoc %)
                       (swap! deltas assoc % next)))]
-    (doall (map #(rx/observe (cell-transition %) (callback %)) cell-indices))))
+    (doall (map #(fnk/observe (cell-transition %) (callback %)) cell-indices))))
 
 ;; Rendering
 
-(def cell-color {:alive "blue" :dead "none"})
+(def cell-color {:alive "blue" :dead "gainsboro"})
 
 (defn render-callback [idx]
   #(-> js/document
@@ -88,16 +87,13 @@
 
 (defn cell-svg [idx]
   (let [[x y] (cell-coord idx)]
-    (str "<rect id="
-         "\"" (str idx) "\""
-         " x=" (* cell-size x)
-         " y=" (* cell-size y)
-         " width=" cell-size
-         " height=" cell-size
-         " fill=none pointer-events=fill"
+    (str "<rect id=\"" (str idx) "\""
+         " x=" (* cell-size x) " y=" (* cell-size y)
+         " width=" cell-size " height=" cell-size
+         " fill=" (cell-color :dead)
          " onclick='gol.demo.flip_cell(parseInt(this.id));'/>")))
 
 (defn ^:export grid-svg [] (apply str (map cell-svg cell-indices)))
 
 (def cell-renderers
-  (doall (map #(rx/observe (cells %) (render-callback %)) cell-indices)))
+  (doall (map #(fnk/observe (cells %) (render-callback %)) cell-indices)))

@@ -1,5 +1,5 @@
-(defproject org.clojars.brentshields/gol-demo "0.1.0-SNAPSHOT"
-  :description "TODO"
+(defproject gol-demo "0.1.0-SNAPSHOT"
+  :description "Conway's Game of Life demo in the browser"
   :url "https://github.com/brentshields/gol-demo"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -12,8 +12,8 @@
 
   :cljsbuild {
     :builds [
-      {:source-paths ["src"]
+      {:source-paths ["src" "funken/src"]
        :compiler {:output-to "gol/demo.js"
                   :output-dir "gol"
-                  :optimizations :simple
-                  :pretty-print true}}]})
+                  :optimizations :advanced
+                  :pretty-print false}}]})
