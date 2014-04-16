@@ -20,16 +20,22 @@
 	            }
                 });
             window.onload = function () {
+	        var container = document.getElementById("container");
                 var grid = document.getElementById("grid");
                 var size = gol.demo.cell_size;
+	        var width = gol.demo.grid_x * size;
+	        container.style.margin = "auto"
+	        container.style.width = width + "px"
                 grid.setAttribute("height", gol.demo.grid_y * size);
-                grid.setAttribute("width", gol.demo.grid_x * size);
-                document.getElementById("grid").innerHTML =
-                    gol.demo.grid_svg();
+                grid.setAttribute("width", width);
+                grid.innerHTML = gol.demo.grid_svg();
             };
         </script>
     </head>
     <body>
+      <div id="container">
         <svg id="grid"></svg>
+	<h2 id="gencount" style="text-align:center">Generation: 0</h2>
+      </div>
     </body>
 </html>

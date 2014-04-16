@@ -20,7 +20,7 @@
 
 (def deltas (atom {}))
 
-(def history (atom []))
+(def history (fnk/state []))
 
 ;; Game of Life Simulation
 
@@ -52,7 +52,7 @@
 
 (defn- push-history-and-update []
   (swap! history conj @grid)
-  (fnk/commit! grid))
+  (fnk/commit! grid history))
 
 (defn ^:export flip-cell [idx]
   (swap! (cells idx) flip)
@@ -62,12 +62,13 @@
   (when-not (empty? @history)
     (reset! grid (peek @history))
     (swap! history pop)
-    (fnk/commit! grid)))
+    (fnk/commit! grid history)))
 
 (defn ^:export step-forward []
-  (swap! grid conj @deltas)
-  (swap! deltas empty)
-  (push-history-and-update))
+  (when-not (empty? @deltas)
+    (swap! grid conj @deltas)
+    (swap! deltas empty)
+    (push-history-and-update)))
 
 (def delta-generators
   (let [callback #(fn [[cur next]]
@@ -80,10 +81,10 @@
 
 (def cell-color {:alive "blue" :dead "gainsboro"})
 
+(defn element-by-id [str-id] (.getElementById js/document str-id))
+
 (defn render-callback [idx]
-  #(-> js/document
-       (.getElementById (str idx))
-       (.setAttribute "fill" (cell-color %))))
+  #(.setAttribute (element-by-id (str idx)) "fill" (cell-color %)))
 
 (defn cell-svg [idx]
   (let [[x y] (cell-coord idx)]
@@ -97,3 +98,7 @@
 
 (def cell-renderers
   (doall (map #(fnk/observe (cells %) (render-callback %)) cell-indices)))
+
+(def gen-counter
+  (fnk/observe history #(set! (.-textContent (element-by-id "gencount"))
+                              (str "Generation: " (count %)))))
