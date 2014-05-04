@@ -4,7 +4,7 @@
 
 ;; Geometry
 
-(def ^:export grid-x 70)
+(def ^:export grid-x 120)
 (def ^:export grid-y 70)
 (def ^:export cell-size 10)
 
@@ -16,7 +16,7 @@
 
 (def grid (fnk/state (zipmap cell-indices (repeat :dead))))
 
-(def cells (zipmap cell-indices (map #(fnk/lens-key grid %) cell-indices)))
+(def cells (zipmap cell-indices (map #(fnk/key-lens grid %) cell-indices)))
 
 (def deltas (atom {}))
 
@@ -70,21 +70,19 @@
     (swap! deltas empty)
     (push-history-and-update)))
 
-(def delta-generators
-  (let [callback #(fn [[cur next]]
-                    (if (= cur next)
-                      (swap! deltas dissoc %)
-                      (swap! deltas assoc % next)))]
-    (doall (map #(fnk/observe (cell-transition %) (callback %)) cell-indices))))
+;; setup delta tracking
+(let [callback #(fn [_ _ _ [cur next]]
+                  (if (= cur next)
+                    (swap! deltas dissoc %)
+                    (swap! deltas assoc % next)))]
+  (dorun (map #(add-watch (cell-transition %) ::deltas (callback %))
+                          cell-indices)))
 
 ;; Rendering
 
 (def cell-color {:alive "blue" :dead "gainsboro"})
 
 (defn element-by-id [str-id] (.getElementById js/document str-id))
-
-(defn render-callback [idx]
-  #(.setAttribute (element-by-id (str idx)) "fill" (cell-color %)))
 
 (defn cell-svg [idx]
   (let [[x y] (cell-coord idx)]
@@ -96,9 +94,14 @@
 
 (defn ^:export grid-svg [] (apply str (map cell-svg cell-indices)))
 
-(def cell-renderers
-  (doall (map #(fnk/observe (cells %) (render-callback %)) cell-indices)))
+(defn render-callback [idx]
+  #(.setAttribute (element-by-id (str idx)) "fill" (cell-color %4)))
 
-(def gen-counter
-  (fnk/observe history #(set! (.-textContent (element-by-id "gencount"))
-                              (str "Generation: " (count %)))))
+;; render changes in cell values
+(dorun (map #(add-watch (cells %) ::renderer (render-callback %)) cell-indices))
+
+;; connect the generation counter
+(add-watch (fnk/view history count)
+           ::history-counter
+           #(set! (.-textContent (element-by-id "gencount"))
+                  (str "Generation: " %4)))
